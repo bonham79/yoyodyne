@@ -336,14 +336,14 @@ class TransducerNoFeatures(lstm.LSTMEncoderDecoder):
                     next_action = []
                     for action, probs, nc in zip(
                         optim_actions, log_probs, not_complete
-                    ):
+                    ): 
                         if nc:
                             optim_logs = probs[action]
                             idx = int(torch.argmax(optim_logs, 0))
                             next_action.append(action[idx])
                         else:  # Already complete, so skip.
                             next_action.append(self.actions.end_idx)
-        return torch.IntTensor(next_action)
+        return torch.IntTensor(next_action, device=self.device)
 
     # TODO: Merge action classes to remove need for this method.
     @staticmethod
