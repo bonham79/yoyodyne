@@ -7,7 +7,7 @@ from typing import List, Optional, Tuple, Union
 import torch
 from torch import nn
 
-from .. import batches
+from .. import batches, defaults
 from . import attention, base
 
 
@@ -32,7 +32,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
     def __init__(
         self,
         *args,
-        bidirectional=True,
+        bidirectional=defaults.BIDIRECTIONAL,
         **kwargs,
     ):
         """Initializes the encoder-decoder without attention.
@@ -174,7 +174,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         return output, hiddens
 
     def init_hiddens(
-        self, batch_size: int
+        self, batch_size: int, num_layers: int
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Initializes the hidden state to pass to the LSTM.
 
@@ -182,14 +182,15 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
 
         Args:
             batch_size (int).
+            num_layers (int).
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: hidden cells for LSTM
                 initialization.
         """
         return (
-            self.h0.repeat(self.encoder_layers, batch_size, 1),
-            self.c0.repeat(self.encoder_layers, batch_size, 1),
+            self.h0.repeat(num_layers, batch_size, 1),
+            self.c0.repeat(num_layers, batch_size, 1),
         )
 
     def decode(
@@ -216,7 +217,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
                 seq_len x batch_size x output_size.
         """
         # Initializes hidden states for decoder LSTM.
-        decoder_hiddens = self.init_hiddens(batch_size)
+        decoder_hiddens = self.init_hiddens(batch_size, self.decoder_layers)
         # Feed in the first decoder input, as a start tag.
         # -> B x 1.
         decoder_input = (
@@ -287,7 +288,9 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
                 "Beam search is not implemented for batch_size > 1"
             )
         # Initializes hidden states for decoder LSTM.
-        decoder_hiddens = self.init_hiddens(encoder_out.size(0))
+        decoder_hiddens = self.init_hiddens(
+            encoder_out.size(0), self.decoder_layers
+        )
         # log likelihood, last decoded idx, all likelihoods,  hiddens tensor.
         histories = [[0.0, [self.start_idx], [0.0], decoder_hiddens]]
         for t in range(self.max_target_length):
@@ -339,7 +342,6 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
                 char_likelihoods,
                 decoder_hiddens,
             ) in likelihoods:
-                # -> B x seq_len x output_size.
                 # This is 1 x 1 x output_size since we fixed batch size to 1.
                 # We squeeze off the fist 2 dimensions to get a tensor of
                 # output_size.
@@ -416,7 +418,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         parser.add_argument(
             "--bidirectional",
             action="store_true",
-            default=True,
+            default=defaults.BIDIRECTIONAL,
             help="Uses a bidirectional encoder "
             "(LSTM-backed architectures only. Default: %(default)s.",
         )

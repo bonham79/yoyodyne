@@ -7,7 +7,15 @@ import pytorch_lightning as pl
 from pytorch_lightning import callbacks, loggers
 from torch.utils import data
 
-from . import collators, dataconfig, datasets, models, schedulers, util
+from . import (
+    collators,
+    dataconfig,
+    datasets,
+    defaults,
+    models,
+    schedulers,
+    util,
+)
 
 
 class Error(Exception):
@@ -165,6 +173,8 @@ def get_loaders(
     dev_set: datasets.BaseDataset,
     arch: str,
     batch_size: int,
+    max_source_length: int,
+    max_target_length: int,
 ) -> Tuple[data.DataLoader, data.DataLoader]:
     """Creates the loaders.
 
@@ -173,13 +183,19 @@ def get_loaders(
         dev_set (datasets.BaseDataset).
         arch (str).
         batch_size (int).
+        max_source_length (int).
+        max_target_length (int).
 
     Returns:
         Tuple[data.DataLoader, data.DataLoader]: the training and development
             loaders.
     """
     collator = collators.Collator(
-        train_set.index.pad_idx, train_set.config, arch
+        train_set.index.pad_idx,
+        train_set.config,
+        arch,
+        max_source_length,
+        max_target_length,
     )
     train_loader = data.DataLoader(
         train_set,
@@ -202,24 +218,24 @@ def get_model(
     train_set: datasets.BaseDataset,
     *,
     # Architecture arguments.
-    arch: str = "attentive_lstm",
-    attention_heads: int = 4,
-    bidirectional: bool = True,
-    decoder_layers: int = 1,
-    embedding_size: int = 128,
-    encoder_layers: int = 1,
-    hidden_size: int = 512,
-    max_target_length: int = 128,
-    max_source_length: int = 128,
+    arch: str = defaults.ARCH,
+    attention_heads: int = defaults.ATTENTION_HEADS,
+    bidirectional: bool = defaults.BIDIRECTIONAL,
+    decoder_layers: int = defaults.DECODER_LAYERS,
+    embedding_size: int = defaults.EMBEDDING_SIZE,
+    encoder_layers: int = defaults.ENCODER_LAYERS,
+    hidden_size: int = defaults.HIDDEN_SIZE,
+    max_source_length: int = defaults.MAX_SOURCE_LENGTH,
+    max_target_length: int = defaults.MAX_TARGET_LENGTH,
     # Training arguments.
-    batch_size: int = 32,
-    beta1: float = 0.9,
-    beta2: float = 0.999,
-    dropout: float = 0.2,
-    learning_rate: float = 0.001,
-    oracle_em_epochs: int = 5,
-    oracle_factor: int = 1,
-    optimizer: str = "adam",
+    batch_size: int = defaults.BATCH_SIZE,
+    beta1: float = defaults.BETA1,
+    beta2: float = defaults.BETA2,
+    dropout: float = defaults.DROPOUT,
+    learning_rate: float = defaults.LEARNING_RATE,
+    oracle_em_epochs: int = defaults.ORACLE_EM_EPOCHS,
+    oracle_factor: int = defaults.ORACLE_FACTOR,
+    optimizer: str = defaults.OPTIMIZER,
     sed_params: Optional[str] = None,
     scheduler: Optional[str] = None,
     **kwargs,
@@ -286,8 +302,8 @@ def get_model(
         features_idx=getattr(train_set.index, "features_idx", -1),
         hidden_size=hidden_size,
         learning_rate=learning_rate,
-        max_target_length=max_target_length,
         max_source_length=max_source_length,
+        max_target_length=max_target_length,
         optimizer=optimizer,
         output_size=train_set.index.target_vocab_size,
         pad_idx=train_set.index.pad_idx,
@@ -366,6 +382,8 @@ def main() -> None:
     )
     # Data configuration arguments.
     dataconfig.DataConfig.add_argparse_args(parser)
+    # Collator arguments.
+    collators.Collator.add_argparse_args(parser)
     # Architecture arguments.
     models.add_argparse_args(parser)
     # Scheduler-specific arguments.
@@ -377,6 +395,7 @@ def main() -> None:
     models.expert.add_argparse_args(parser)
     # Trainer arguments.
     # Among the things this adds, the following are likely to be useful:
+    # --auto_lr_find
     # --accelerator ("gpu" for GPU)
     # --check_val_every_n_epoch
     # --devices (for multiple device support)
@@ -391,7 +410,7 @@ def main() -> None:
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=128,
+        default=defaults.BATCH_SIZE,
         help="Batch size. Default: %(default)s.",
     )
     parser.add_argument(
@@ -400,14 +419,14 @@ def main() -> None:
     parser.add_argument(
         "--save_top_k",
         type=int,
-        default=1,
+        default=defaults.SAVE_TOP_K,
         help="Number of checkpoints to save. Default: %(default)s.",
     )
     parser.add_argument("--seed", type=int, help="Random seed")
     parser.add_argument(
         "--wandb",
         action="store_true",
-        default=False,
+        default=defaults.WANDB,
         help="Use Weights & Biases logging (log-in required). Default: True.",
     )
     parser.add_argument(
@@ -424,9 +443,24 @@ def main() -> None:
     train_set.index.write(index)
     util.log_info(f"Index: {index}")
     train_loader, dev_loader = get_loaders(
-        train_set, dev_set, args.arch, args.batch_size
+        train_set,
+        dev_set,
+        args.arch,
+        args.batch_size,
+        args.max_source_length,
+        args.max_target_length,
     )
     model = get_model(train_set, **vars(args))
+    # Tuning options. Batch autoscaling is unsupported; LR tuning logs the
+    # suggested value and then exits.
+    if args.auto_scale_batch_size:
+        raise Error("Batch auto-scaling is not supported")
+        return
+    if args.auto_lr_find:
+        result = trainer.tuner.lr_find(model, train_loader, dev_loader)
+        util.log_info(f"Best initial LR: {result.suggestion():.8f}")
+        return
+    # Otherwise, train and log the best checkpoint.
     best_checkpoint = train(
         trainer, model, train_loader, dev_loader, args.train_from
     )

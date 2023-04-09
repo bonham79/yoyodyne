@@ -1,37 +1,87 @@
 """Collators and related utilities."""
 
+import argparse
 from typing import List
 
 import torch
 
-from . import batches, dataconfig, datasets
+from . import batches, dataconfig, datasets, defaults, util
+
+
+class LengthError(Exception):
+    pass
 
 
 class Collator:
-    """Base class for other collators.
-
-    Pads according to the longest sequence in a batch of sequences."""
+    """Pads data."""
 
     pad_idx: int
     has_features: bool
     has_target: bool
     separate_features: bool
+    max_source_length: int
+    max_target_length: int
 
-    def __init__(self, pad_idx, config: dataconfig.DataConfig, arch: str):
+    def __init__(
+        self,
+        pad_idx,
+        config: dataconfig.DataConfig,
+        arch: str,
+        max_source_length: int = defaults.MAX_SOURCE_LENGTH,
+        max_target_length: int = defaults.MAX_TARGET_LENGTH,
+    ):
         """Initializes the collator.
 
         Args:
             pad_idx (int).
             config (dataconfig.DataConfig).
             arch (str).
+            max_source_length (int).
+            max_target_length (int).
         """
         self.pad_idx = pad_idx
         self.has_features = config.has_features
         self.has_target = config.has_target
+        self.max_source_length = max_source_length
+        self.max_target_length = max_target_length
         self.separate_features = config.has_features and arch in [
             "pointer_generator_lstm",
             "transducer",
         ]
+
+    def _source_length_error(self, padded_length: int):
+        """Callback function to raise the error when the padded length of the
+        source batch is greater than the `max_source_length` allowed.
+
+        Args:
+            padded_length (int): The length of the the padded tensor.
+
+        Raises:
+            LengthError.
+        """
+        if padded_length > self.max_source_length:
+            msg = f"The length of a source sample ({padded_length}) "
+            msg += "is greater than the allowed `--max_source_length` "
+            msg += f"({self.max_source_length})"
+            raise LengthError(msg)
+
+    def _target_length_warning(self, padded_length: int):
+        """Callback function to log a message when the padded length of the
+        target batch is greater than the `max_target_length` allowed.
+
+        Since `max_target_length` just truncates during inference, this is
+        simply a suggestion.
+
+        Args:
+            padded_length (int): The length of the the padded tensor.
+        """
+        if padded_length > self.max_target_length:
+            msg = f"The length of a batch ({padded_length}) "
+            msg += "is greater than the `--max_target_length` specified "
+            msg += f"({self.max_target_length}). This means that "
+            msg += "decoding at inference time will likely be truncated. "
+            msg += "Consider increasing `--max_target_length`."
+            util.log_info(msg)
 
     @staticmethod
     def concatenate_source_and_features(
@@ -59,7 +109,9 @@ class Collator:
             batches.PaddedTensor.
         """
         return batches.PaddedTensor(
-            [item.source for item in itemlist], self.pad_idx
+            [item.source for item in itemlist],
+            self.pad_idx,
+            self._source_length_error,
         )
 
     def pad_source_features(
@@ -75,7 +127,9 @@ class Collator:
             batches.PaddedTensor.
         """
         return batches.PaddedTensor(
-            self.concatenate_source_and_features(itemlist), self.pad_idx
+            self.concatenate_source_and_features(itemlist),
+            self.pad_idx,
+            self._source_length_error,
         )
 
     def pad_features(
@@ -106,7 +160,9 @@ class Collator:
             batches.PaddedTensor.
         """
         return batches.PaddedTensor(
-            [item.target for item in itemlist], self.pad_idx
+            [item.target for item in itemlist],
+            self.pad_idx,
+            self._target_length_warning,
         )
 
     def __call__(self, itemlist: List[datasets.Item]) -> batches.PaddedBatch:
@@ -130,3 +186,22 @@ class Collator:
                 self.pad_source_features(itemlist),
                 target=padded_target,
             )
+
+    def add_argparse_args(parser: argparse.ArgumentParser) -> None:
+        """Adds collator options to the argument parser.
+
+        Args:
+            parser (argparse.ArgumentParser).
+        """
+        parser.add_argument(
+            "--max_source_length",
+            type=int,
+            default=defaults.MAX_SOURCE_LENGTH,
+            help="Maximum source string length. Default: %(default)s.",
+        )
+        parser.add_argument(
+            "--max_target_length",
+            type=int,
+            default=defaults.MAX_TARGET_LENGTH,
+            help="Maximum target string length. Default: %(default)s.",
+        )

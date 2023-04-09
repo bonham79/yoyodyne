@@ -10,7 +10,7 @@ import pytorch_lightning as pl
 import torch
 from torch import nn, optim
 
-from .. import batches, evaluators, schedulers, util
+from .. import batches, defaults, evaluators, schedulers, util
 
 
 class BaseEncoderDecoder(pl.LightningModule):
@@ -51,20 +51,20 @@ class BaseEncoderDecoder(pl.LightningModule):
         end_idx,
         vocab_size,
         output_size,
-        beta1=0.9,
-        beta2=0.999,
-        learning_rate=0.001,
-        optimizer="adam",
+        beta1=defaults.BETA1,
+        beta2=defaults.BETA2,
+        learning_rate=defaults.LEARNING_RATE,
+        optimizer=defaults.OPTIMIZER,
         scheduler=None,
         scheduler_kwargs=None,
-        dropout=0.2,
+        dropout=defaults.DROPOUT,
         label_smoothing=None,
-        beam_width=1,
-        max_target_length=128,
-        decoder_layers=1,
-        embedding_size=128,
-        encoder_layers=1,
-        hidden_size=512,
+        beam_width=defaults.BEAM_WIDTH,
+        max_target_length=defaults.MAX_TARGET_LENGTH,
+        decoder_layers=defaults.DECODER_LAYERS,
+        embedding_size=defaults.EMBEDDING_SIZE,
+        encoder_layers=defaults.ENCODER_LAYERS,
+        hidden_size=defaults.HIDDEN_SIZE,
         **kwargs,  # Ignored.
     ):
         super().__init__()
@@ -89,7 +89,7 @@ class BaseEncoderDecoder(pl.LightningModule):
         self.hidden_size = hidden_size
         self.dropout_layer = nn.Dropout(p=self.dropout, inplace=False)
         self.evaluator = evaluators.Evaluator()
-        self.loss = self._get_loss_func("mean")
+        self.loss_func = self._get_loss_func("mean")
         # Saves hyperparameters for PL checkpointing.
         self.save_hyperparameters()
 
@@ -181,7 +181,7 @@ class BaseEncoderDecoder(pl.LightningModule):
         target_padded = batch.target.padded
         # -> B x output_size x seq_len. For loss.
         predictions = predictions.transpose(1, 2)
-        loss = self.loss(predictions, target_padded)
+        loss = self.loss_func(predictions, target_padded)
         self.log(
             "train_loss",
             loss,
@@ -219,7 +219,7 @@ class BaseEncoderDecoder(pl.LightningModule):
         forced_predictions = self(batch)
         # -> B x output_size x seq_len. For loss.
         forced_predictions = forced_predictions.transpose(1, 2)
-        loss = self.loss(forced_predictions, target_padded)
+        loss = self.loss_func(forced_predictions, target_padded)
         return {"val_accuracy": accuracy, "val_loss": loss}
 
     def validation_epoch_end(self, validation_step_outputs: Dict) -> Dict:
@@ -257,7 +257,7 @@ class BaseEncoderDecoder(pl.LightningModule):
             torch.Tensor: indices of the argmax at each timestep.
         """
         predictions = self(batch)
-        # -> B x seq_len x output_size.
+        # -> B x seq_len x 1.
         greedy_predictions = self._get_predicted(predictions)
         return greedy_predictions
 
@@ -284,11 +284,12 @@ class BaseEncoderDecoder(pl.LightningModule):
         """
         optimizer = self._get_optimizer()
         scheduler = self._get_lr_scheduler(optimizer[0])
-        util.log_info("Optimizer details:")
-        util.log_info(optimizer)
         if scheduler:
             util.log_info("Scheduler details:")
             util.log_info(scheduler)
+        else:
+            util.log_info("Optimizer details:")
+            util.log_info(optimizer)
         return optimizer, scheduler
 
     def _get_optimizer(self) -> optim.Optimizer:
@@ -403,32 +404,32 @@ class BaseEncoderDecoder(pl.LightningModule):
         parser.add_argument(
             "--beta1",
             type=float,
-            default=0.9,
+            default=defaults.BETA1,
             help="beta_1 (Adam optimizer only). Default: %(default)s.",
         )
         parser.add_argument(
             "--beta2",
             type=float,
-            default=0.999,
+            default=defaults.BETA2,
             help="beta_2 (Adam optimizer only). Default: %(default)s.",
         )
         parser.add_argument(
             "--learning_rate",
             type=float,
-            default=0.001,
+            default=defaults.LEARNING_RATE,
             help="Learning rate. Default: %(default)s.",
         )
         parser.add_argument(
             "--optimizer",
             choices=["adadelta", "adam", "sgd"],
-            default="adam",
+            default=defaults.OPTIMIZER,
             help="Optimizer. Default: %(default)s.",
         )
         # Regularization arguments.
         parser.add_argument(
             "--dropout",
             type=float,
-            default=0.2,
+            default=defaults.DROPOUT,
             help="Dropout probability. Default: %(default)s.",
         )
         parser.add_argument(
@@ -436,37 +437,30 @@ class BaseEncoderDecoder(pl.LightningModule):
             type=float,
             help="Coefficient for label smoothing.",
         )
-        # Decoding arguments.
-        parser.add_argument(
-            "--max_target_length",
-            type=int,
-            default=128,
-            help="Maximum decoder string length. Default: %(default)s.",
-        )
         # TODO: add --beam_width.
         # Model arguments.
         parser.add_argument(
             "--decoder_layers",
             type=int,
-            default=1,
+            default=defaults.DECODER_LAYERS,
             help="Number of decoder layers. Default: %(default)s.",
         )
         parser.add_argument(
             "--embedding_size",
             type=int,
-            default=128,
+            default=defaults.EMBEDDING_SIZE,
             help="Dimensionality of embeddings. Default: %(default)s.",
         )
         parser.add_argument(
             "--encoder_layers",
             type=int,
-            default=1,
+            default=defaults.ENCODER_LAYERS,
             help="Number of encoder layers. Default: %(default)s.",
         )
         parser.add_argument(
             "--hidden_size",
             type=int,
-            default=512,
+            default=defaults.HIDDEN_SIZE,
             help="Dimensionality of the hidden layer(s). "
             "Default: %(default)s.",
         )

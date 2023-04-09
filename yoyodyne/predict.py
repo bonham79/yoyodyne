@@ -65,6 +65,8 @@ def get_loader(
     dataset: datasets.BaseDataset,
     arch: str,
     batch_size: int,
+    max_source_length: int,
+    max_target_length: int,
 ) -> data.DataLoader:
     """Creates the loader.
 
@@ -72,11 +74,19 @@ def get_loader(
         dataset (data.Dataset).
         arch (str).
         batch_size (int).
+        max_source_length (int).
+        max_target_length (int).
 
     Returns:
         data.DataLoader.
     """
-    collator = collators.Collator(dataset.index.pad_idx, dataset.config, arch)
+    collator = collators.Collator(
+        dataset.index.pad_idx,
+        dataset.config,
+        arch,
+        max_source_length,
+        max_target_length,
+    )
     return data.DataLoader(
         dataset,
         collate_fn=collator,
@@ -98,7 +108,13 @@ def _get_loader_from_argparse_args(
     """
     config = dataconfig.DataConfig.from_argparse_args(args)
     dataset = get_dataset(args.predict, config, args.index)
-    return get_loader(dataset, args.arch, args.batch_size)
+    return get_loader(
+        dataset,
+        args.arch,
+        args.batch_size,
+        args.max_source_length,
+        args.max_target_length,
+    )
 
 
 def get_model(
@@ -203,6 +219,8 @@ def main() -> None:
     )
     # Data configuration arguments.
     dataconfig.DataConfig.add_argparse_args(parser)
+    # Collator arguments.
+    collators.Collator.add_argparse_args(parser)
     # Architecture arguments.
     models.add_argparse_args(parser)
     # Predicting arguments.
