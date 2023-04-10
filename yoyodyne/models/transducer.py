@@ -571,10 +571,7 @@ class TransducerNoFeatures(lstm.LSTMEncoderDecoder):
 class TransducerFeatures(TransducerNoFeatures):
     """Transducer model with an LSTM backend."""
 
-    features_idx: int
-    features_vocab_size: int
-
-    def __init__(self, features_idx, features_vocab_size, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Initializes transducer model.
 
         Functions equivalently to TransducerNoFeatures except concatenates
@@ -587,14 +584,11 @@ class TransducerFeatures(TransducerNoFeatures):
             **kwargs: passed to superclass.
         """
         super().__init__(*args, **kwargs)
-        self.features_idx = features_idx
-        self.features_vocab_size = features_vocab_size
         # Overrides decoder to accomodate features.
         self.decoder = nn.LSTM(
             self.hidden_size * self.num_directions
             + self.embedding_size
-            + self.features_vocab_size
-            + 1,  # For unk feature.
+            + self.features_encoder.embedding_size,
             self.hidden_size,
             dropout=self.dropout,
             num_layers=self.decoder_layers,
@@ -617,31 +611,10 @@ class TransducerFeatures(TransducerNoFeatures):
         encoder_out = encoder_out[:, 1:, :]
         source_padded = batch.source.padded[:, 1:]
         source_mask = batch.source.mask[:, 1:]
-        # Converts features to n-hot encoding.
-        with torch.no_grad():
-            # Features are offset by features idx; we shift one to encode
-            # padding, replacing mask with first index.
-            features_padded = torch.where(
-                batch.features.mask,
-                0,
-                batch.features.padded - self.features_idx + 1,
-            )
-            # Features outside offset classified as unknown feature. The index
-            # is the end of the features vocabulary.
-            features_padded[features_padded < 0] = self.features_vocab_size + 1
-            # The size of the one-hot embeddings are the vocab size plus two
-            # for padding and unknown.
-            one_hot_features = nn.functional.one_hot(
-                features_padded, self.features_vocab_size + 2
-            )
-            # Truncates pad at idx 0 then sum one_hots for n_hot vectors.
-            n_hot_features = torch.sum(
-                one_hot_features[:, :, 1:], dim=1, keepdim=True
-            )
-        # B x 1 x n_feat -> B x seq_len x n_feat.
-        n_hot_features = n_hot_features.expand(-1, encoder_out.size(1), -1)
-        # Concatenates n-hot encoding onto each symbol.
-        encoder_out_feat = torch.cat((encoder_out, n_hot_features), dim=2)
+        # Gets features encodings then appends to encoding.
+        features_out = self.features_encoder(batch.features)
+        features_out = torch.mean(features_out, dim=1).expand(-1, encoder_out.size(1), -1)
+        encoder_out_feat = torch.cat((encoder_out, features_out), dim=2)
         prediction, loss = self.decode(
             encoder_out_feat,
             source_padded,

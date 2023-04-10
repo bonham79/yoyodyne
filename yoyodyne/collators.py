@@ -26,16 +26,15 @@ class Collator:
         self,
         pad_idx,
         config: dataconfig.DataConfig,
-        arch: str,
-        max_source_length: int = defaults.MAX_SOURCE_LENGTH,
-        max_target_length: int = defaults.MAX_TARGET_LENGTH,
+        max_source_length = defaults.MAX_SOURCE_LENGTH,
+        max_target_length = defaults.MAX_TARGET_LENGTH,
+        separate_features = defaults.SEPARATE_FEATURES
     ):
         """Initializes the collator.
 
         Args:
             pad_idx (int).
             config (dataconfig.DataConfig).
-            arch (str).
             max_source_length (int).
             max_target_length (int).
         """
@@ -44,10 +43,7 @@ class Collator:
         self.has_target = config.has_target
         self.max_source_length = max_source_length
         self.max_target_length = max_target_length
-        self.separate_features = config.has_features and arch in [
-            "pointer_generator_lstm",
-            "transducer",
-        ]
+        self.separate_features = separate_features
 
     def _source_length_error(self, padded_length: int):
         """Callback function to raise the error when the padded length of the

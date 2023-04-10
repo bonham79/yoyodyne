@@ -248,6 +248,9 @@ class TransformerEncoderDecoder(base.BaseEncoderDecoder):
                 (starts == self.pad_idx, batch.target.mask), dim=1
             )
             encoder_hidden = self.encode(batch.source)
+            if self.has_features:
+                features_hidden = self.features_encoder(batch.features)
+                encoder_hidden = torch.cat(encoder_hidden, features_hidden, dim=1)
             output = self.decode(
                 encoder_hidden, batch.source.mask, target_padded, target_mask
             )

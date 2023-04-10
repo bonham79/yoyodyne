@@ -23,6 +23,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
     source_embeddings: nn.Embedding
     target_embeddings: nn.Embedding
     encoder: nn.LSTM
+    encoder_size: int
     h0: nn.Parameter
     c0: nn.Parameter
     decoder: nn.LSTM
@@ -58,12 +59,14 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
             batch_first=True,
             bidirectional=self.bidirectional,
         )
-        encoder_size = self.hidden_size * self.num_directions
+        self.encoder_size = self.hidden_size * self.num_directions + self.embedding_size
+        if self.has_features_encoder:
+            self.encoder_size += self.features_encoder.encoder_size
         # Initial hidden state whose parameters are shared across all examples.
         self.h0 = nn.Parameter(torch.rand(self.hidden_size))
         self.c0 = nn.Parameter(torch.rand(self.hidden_size))
         self.decoder = nn.LSTM(
-            encoder_size + self.embedding_size,
+            self.encoder_size,
             self.hidden_size,
             dropout=self.dropout,
             num_layers=self.decoder_layers,
@@ -393,6 +396,8 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
                 (seq_len, batch_size, output_size).
         """
         encoder_out, _ = self.encode(batch.source)
+        if self.has_features_encoder:
+            encoder_out = self.features_encoder.append_features(batch, encoder_out)
         if self.beam_width is not None and self.beam_width > 1:
             predictions = self.beam_decode(
                 len(batch),
@@ -437,8 +442,7 @@ class AttentiveLSTMEncoderDecoder(LSTMEncoderDecoder):
     def __init__(self, *args, **kwargs):
         """Initializes the encoder-decoder with attention."""
         super().__init__(*args, **kwargs)
-        encoder_size = self.hidden_size * self.num_directions
-        self.attention = attention.Attention(encoder_size, self.hidden_size)
+        self.attention = attention.Attention(self.encoder_size, self.hidden_size)
 
     def decode_step(
         self,

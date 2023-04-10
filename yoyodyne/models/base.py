@@ -38,7 +38,10 @@ class BaseEncoderDecoder(pl.LightningModule):
     embedding_size: int
     encoder_layers: int
     hidden_size: int
+    # Features arguments.
+    features_encoder: pl.LightningModule
     # Constructed inside __init__.
+    has_features_encoder: bool
     dropout_layer: nn.Dropout
     evaluator: evaluators.Evaluator
     loss: Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
@@ -51,6 +54,7 @@ class BaseEncoderDecoder(pl.LightningModule):
         end_idx,
         vocab_size,
         output_size,
+        features_encoder=None,
         beta1=defaults.BETA1,
         beta2=defaults.BETA2,
         learning_rate=defaults.LEARNING_RATE,
@@ -73,6 +77,8 @@ class BaseEncoderDecoder(pl.LightningModule):
         self.end_idx = end_idx
         self.vocab_size = vocab_size
         self.output_size = output_size
+        self.features_encoder = features_encoder
+        self.has_features_encoder = features_encoder is not None
         self.beta1 = beta1
         self.beta2 = beta2
         self.learning_rate = learning_rate
