@@ -1,12 +1,19 @@
 """Prediction."""
+import csv
 
 import argparse
 import os
+import torch
 
 import pytorch_lightning as pl
 
+from torchmetrics.functional.text import char_error_rate
+
 from . import data, models, util
 
+
+if torch.cuda.device_count() > 1:
+    assert False, "Only one GPU is allowed for prediction."
 
 def get_trainer_from_argparse_args(
     args: argparse.Namespace,
@@ -157,6 +164,11 @@ def main() -> None:
     model = get_model_from_argparse_args(args)
     predict(trainer, model, datamodule, args.output)
 
+    with open(args.output) as predictions:
+        preds = csv.reader(predictions)
+        hyp = [p[0] for p in preds]
+        gld = ["".join(t[-1]) for t in datamodule.parser.samples(datamodule.predict)]
+        print(f"Final PER: {char_error_rate(hyp, gld).item()}")
 
 if __name__ == "__main__":
     main()

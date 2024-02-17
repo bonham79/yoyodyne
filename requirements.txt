@@ -13,3 +13,4 @@ tqdm>=4.65.0
 twine>=4.0.2
 wandb>=0.15.3
 wheel>=0.40.0
+torchmetrics

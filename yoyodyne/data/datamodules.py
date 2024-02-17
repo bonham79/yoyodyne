@@ -182,7 +182,7 @@ class DataModule(pl.LightningDataModule):
         return data.DataLoader(
             self._dataset(self.predict),
             collate_fn=self.collator,
-            batch_size=2 * self.batch_size,  # Because no gradients.
+            batch_size=self.batch_size,  # Because no gradients.
             num_workers=1,
         )
 
