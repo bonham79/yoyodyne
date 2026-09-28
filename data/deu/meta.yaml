@@ -1,0 +1,18 @@
+authors:
+- Kyle Gorman
+- Katharina Kann
+code: deu
+sources:
+- Apertium (via UDLexicons)
+- DeLex (via UDLexicons)
+- CELEX
+- UniMorph
+summary: This data consists of German nom.sg. forms and the corresponding nom.pl.
+  There are several plural allomorphs (_-en_, _-e_, _-er_, _-s_, zero, and a few Greco-Roman
+  affixes) and some of these are accompanied by _umlaut_, a fronting of a stem-final
+  back vowel. This example is inspired by recent work by McCurdy et al. (and much
+  earlier, Marcus et al. and various replies).
+third_column: The third column contains inherent gender information, encoded according
+  to the UniMorph specification, which is relevant to the selection of the relevant
+  plural suffixes.
+title: German noun plurals

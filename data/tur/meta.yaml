@@ -1,0 +1,13 @@
+authors:
+- Selin Alkan
+- Kyle Gorman
+code: tur
+sources:
+- TELL
+- UniMorph
+summary: This data consists of Turkish nom.sg. forms and the corresponding "definite
+  accusative" (acc.sg) and 3rd person singular possessive. The vowel in this suffix
+  usually harmonizes with the stem, and the addition of a vowel-initial suffix may
+  trigger velar deletion or, in words of (Perso-)Arabic origin, loss of a fleeting
+  vowel in the final syllable of the stem.
+title: Turkish declension

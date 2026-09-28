@@ -1,0 +1,15 @@
+authors:
+- Kyle Gorman
+code: fin
+sources:
+- Silfverberg et al. 2021 (via Turku Dependency Treebank and OmorFi)
+summary: This data consists Finnish nom.sg. forms and the corresponding gen.sg. The
+  nom.sg. forms are roughly the 5,000 most frequent nom.sg. forms in the Turku Dependency
+  Treebank (Haverinen et al.) and the gen.sg. form was generated using the OmorFi
+  morphological analyzer/generator (Pirinen). Finnish nouns may exhibit interparadigmatic
+  stem-final alternations known as _gradation_; for instance the _pappi_ 'priest'
+  has a gen.sg. _papin_, in which the geminate _pp_ has degeminated ("quantitative
+  gradation"), and _sopu_ 'agreement' has a gen.sg. _sovun_, with _p_ converted to
+  _v_ ("qualitative gradation"). This phenomenon has been discussed extensively by
+  linguists and is inspired by the recent paper by Silfverberg et al.
+title: Finnish consonant gradation

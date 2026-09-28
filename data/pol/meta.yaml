@@ -1,0 +1,13 @@
+authors:
+- Magdalena Markowska
+code: pol
+sources:
+- UniMorph
+summary: This data consists of Polish nom.sg. forms and the corresponding gen.sg.
+  Many of the forms exhibit "yer" (fleeting _e_ or _ie_) or _o_/_u_ alternations in
+  the stem, and there are several competing gen.sg. suffixes. Rubach, Buckley, and
+  Dąbrowska, respectively, have argued that these three patterns are generally unpredictable.
+third_column: The third column contains inherent gender/animacy information, encoded
+  according to the UniMorph specification, which is relevant to the selection of the
+  relevant gen.sg suffixes.
+title: Polish declension

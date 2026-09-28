@@ -1,0 +1,13 @@
+authors:
+- Mariana Graterol
+- M. Elizabeth Garza
+code: spa
+sources:
+- LEXESP
+- UniMorph
+summary: This data consists of Spanish verbs (in their infinitive citation form) and
+  their 1sg. present indicative. Many of the forms feature diphthongization of _e_
+  or _o_ to _ie_ or _ue_, respectively, the "raising" of _e_ to _i_, or the insertion
+  of a stem-final _c_ or _g_. Harris has argued that these patterns are generally
+  unpredictable. This example is inspired by Albright et al.
+title: Spanish conjugation

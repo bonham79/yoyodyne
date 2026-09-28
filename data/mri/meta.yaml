@@ -1,0 +1,13 @@
+authors:
+- Selin Alkan
+- Kyle Gorman
+code: mri
+sources:
+- Biggs 2009
+- Ryan 1989
+- Te Aka
+summary: This data consists of Maori verbs and their corresponding passive versions.
+  While the most common passive suffix is _-tia_, there are many other variants observed
+  in the data set. There are also some verbs that exhibit stem change in the passive;
+  others undergo reduplication.
+title: Maori passives

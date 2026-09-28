@@ -1,0 +1,20 @@
+authors:
+- Kristysha Chan
+- Kyle Gorman
+code: eng
+sources:
+- Apertium (via UDLexicons, via CityLex)
+- CELEX (via CityLex)
+- UniMorph (via CityLex)
+summary: This data consists of English verbs and their "simple" (preterite) past tense
+  form. Most English verbs are so-called "regular" verbs forming a past tense in _-ed_,
+  though there are more than a hundred "irregular" verbs which either have zero (i.e.,
+  identical to the stem) past tense forms, like _hit_/_hit_, or undergo various stem
+  changes (i.e., ablaut, as in _sing_/_sang_, or shortening with dental suffixation,
+  as in _sleep_/_slept_). This example is inspired by recent papers by Kirov & Cotterell
+  and Corkery et al. (and much earlier, Rumelhart & McClelland and the reply from
+  Pinker & Prince).
+third_column: The third column simply records whether the verb is "regular" or "irregular"
+  as commonly understood; this should also allow interested parties to study the irregular
+  past tense and ignore the regular.
+title: English past tense verbs
